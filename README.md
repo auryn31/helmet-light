@@ -1,8 +1,7 @@
 # ESP32 LED Animation Project
 
 ## Video
-
-YouTube: https://youtu.be/EtDtujpCDo8
+Check out the demonstration of the project on YouTube: [ESP32 LED Animation Project Video](https://youtu.be/EtDtujpCDo8)
 
 ## Description
 This project utilizes an ESP32 microcontroller to control a WS2812B LED strip with various animations. It also integrates an MPU6500 sensor to detect motion and allows users to select different animation modes via a web interface.
@@ -40,8 +39,8 @@ This project utilizes an ESP32 microcontroller to control a WS2812B LED strip wi
 ## Installation
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/yourproject.git
-   cd yourproject
+   git clone https://github.com/auryn31/helmet-light
+   cd helmet-light
    ```
 
 2. Open the project in PlatformIO.
@@ -49,9 +48,10 @@ This project utilizes an ESP32 microcontroller to control a WS2812B LED strip wi
 3. Install the required libraries specified in `platformio.ini`:
    ```ini
    lib_deps = 
-       fastled/FastLED@^3.9.10
-       adafruit/Adafruit NeoPixel@^1.12.3
-       hideakitai/MPU9250@^0.4.8
+	fastled/FastLED@^3.9.10
+	adafruit/Adafruit NeoPixel@^1.12.3
+	wollewald/MPU9250_WE@^1.2.11
+    https://github.com/me-no-dev/ESPAsyncWebServer.git
    ```
 
 ## Usage
