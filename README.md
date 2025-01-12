@@ -1,5 +1,9 @@
 # ESP32 LED Animation Project
 
+## Video
+
+YouTube: https://youtu.be/EtDtujpCDo8
+
 ## Description
 This project utilizes an ESP32 microcontroller to control a WS2812B LED strip with various animations. It also integrates an MPU6500 sensor to detect motion and allows users to select different animation modes via a web interface.
 
@@ -11,6 +15,7 @@ This project utilizes an ESP32 microcontroller to control a WS2812B LED strip wi
 
 ## Table of Contents
 - [ESP32 LED Animation Project](#esp32-led-animation-project)
+  - [Video](#video)
   - [Description](#description)
   - [Features](#features)
   - [Table of Contents](#table-of-contents)

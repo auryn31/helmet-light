@@ -90,8 +90,7 @@ void loop()
   } else if (selectedOption == "Audi Car") {
     carAnimation();
   } else if (selectedOption == "Race") {
-    Serial.println("Selected: Race");
-    rainbowAnimation(); // Call the rainbow animation
+    rainbowAnimation(); 
   }
   if (isServerActive && millis() - lastActivityTime > timeoutDuration) {
     stopServer();
