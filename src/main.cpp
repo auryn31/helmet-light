@@ -20,19 +20,31 @@ std::deque<float> gValueQueue; // Queue to store the G-values for averaging
 const int QUEUE_SIZE = 10; // Number of samples for the moving average
 Preferences preferences;
 AsyncWebServer server(80);
-String selectedOption = "Kitt Car";
+
+// Define an enum for animation options
+enum AnimationOption {
+    KITT_CAR,
+    AUDI_CAR,
+    RACE,
+    ANIMATION_COUNT // This can be used to determine the number of animations
+};
+
+// Update the selectedOption variable to use the enum type
+AnimationOption selectedOption = KITT_CAR;
+
 unsigned long lastActivityTime = 0; // Tracks the last activity time
 const unsigned long timeoutDuration = 120000; // 2 minutes in milliseconds
 bool isServerActive = false;
 const int DEFAULT_SPEED = 20; // Default speed for the animation
 int animationSpeed = DEFAULT_SPEED; // Variable to store the animation speed
+bool brakeDetectionEnabled = true; // Default to enabled
 
 
 void check_if_breaking();
 void kittAnimation();
 void carAnimation();
 void loadOption();
-void saveOption(String option, int speed);
+void saveOption(AnimationOption option, int speed, bool brakeDetection);
 void startServer();
 void stopServer();
 void rainbowAnimation();
@@ -85,11 +97,11 @@ void loop()
   ws2812b.clear();
   ws2812b.show(); // Ensure to show the cleared state
 
-  if (selectedOption == "Kitt Car") {
+  if (selectedOption == KITT_CAR) {
     kittAnimation(); 
-  } else if (selectedOption == "Audi Car") {
+  } else if (selectedOption == AUDI_CAR) {
     carAnimation();
-  } else if (selectedOption == "Race") {
+  } else if (selectedOption == RACE) {
     rainbowAnimation(); 
   }
   if (isServerActive && millis() - lastActivityTime > timeoutDuration) {
@@ -204,6 +216,8 @@ void blinkLights(int durationInSeconds)
 
 void check_if_breaking()
 {
+  if (!brakeDetectionEnabled) return; // Skip if brake detection is disabled
+
   xyzFloat gValue = mpu.getGValues();
   xyzFloat acc = mpu.getAccRawValues();
 
@@ -236,22 +250,24 @@ void check_if_breaking()
   }
 }
 
-// Function to save the selected option and speed in NVS
-void saveOption(String option, int speed) {
-  preferences.begin("my-app", false); // Open NVS
-  preferences.putString("selectedOption", option); // Save the option
-  preferences.putInt("animationSpeed", speed); // Save the speed
-  preferences.end(); // Close NVS
-  Serial.println("Option and speed saved to NVS: " + option + ", Speed: " + String(speed));
+// Function to save the selected option, speed, and brake detection state in NVS
+void saveOption(AnimationOption option, int speed, bool brakeDetection) {
+    preferences.begin("my-app", false); // Open NVS
+    preferences.putInt("selectedOption", option); // Save the option as an integer
+    preferences.putInt("animationSpeed", speed); // Save the speed
+    preferences.putBool("brakeDetectionEnabled", brakeDetection); // Save the brake detection state
+    preferences.end(); // Close NVS
+    Serial.println("Option, speed, and brake detection saved to NVS: " + String(option) + ", Speed: " + String(speed) + ", Brake Detection: " + String(brakeDetection));
 }
 
-// Function to load the selected option and speed from NVS
+// Function to load the selected option, speed, and brake detection state from NVS
 void loadOption() {
-  preferences.begin("my-app", true); // Open NVS in read-only mode
-  selectedOption = preferences.getString("selectedOption", "Kitt Car"); // Default to "Kitt Car"
-  animationSpeed = preferences.getInt("animationSpeed", DEFAULT_SPEED); // Load speed, default to DEFAULT_SPEED
-  preferences.end(); // Close NVS
-  Serial.println("Loaded option from NVS: " + selectedOption + ", Speed: " + String(animationSpeed));
+    preferences.begin("my-app", true); // Open NVS in read-only mode
+    selectedOption = static_cast<AnimationOption>(preferences.getInt("selectedOption", KITT_CAR)); // Load option, default to KITT_CAR
+    animationSpeed = preferences.getInt("animationSpeed", DEFAULT_SPEED); // Load speed, default to DEFAULT_SPEED
+    brakeDetectionEnabled = preferences.getBool("brakeDetectionEnabled", true); // Load brake detection state, default to true
+    preferences.end(); // Close NVS
+    Serial.println("Loaded option from NVS: " + String(selectedOption) + ", Speed: " + String(animationSpeed) + ", Brake Detection: " + String(brakeDetectionEnabled));
 }
 
 void startServer(){
@@ -334,15 +350,22 @@ void startServer(){
               "<div>"
               "<h1>Select Your Option</h1>"
               "<form action='/save' method='GET'>"
-              "<input type='radio' id='kitt' name='option' value='Kitt Car' " + 
-              String((selectedOption == "Kitt Car" ? "checked" : "")) + ">"
+              "<input type='radio' id='kitt' name='option' value='" + String(KITT_CAR) + "' " + 
+              String((selectedOption == KITT_CAR ? "checked" : "")) + ">"
               "<label for='kitt'>Kitt Car</label><br>"
-              "<input type='radio' id='audi' name='option' value='Audi Car' " + 
-              String((selectedOption == "Audi Car" ? "checked" : "")) + ">"
+              "<input type='radio' id='audi' name='option' value='" + String(AUDI_CAR) + "' " + 
+              String((selectedOption == AUDI_CAR ? "checked" : "")) + ">"
               "<label for='audi'>Audi Car</label><br>"
-              "<input type='radio' id='race' name='option' value='Race' " + 
-              String((selectedOption == "Race" ? "checked" : "")) + ">"
+              "<input type='radio' id='race' name='option' value='" + String(RACE) + "' " + 
+              String((selectedOption == RACE ? "checked" : "")) + ">"
               "<label for='race'>Race</label><br><br>"
+              "<label for='brakeDetection'>Brake Detection:</label><br>"
+              "<input type='radio' id='brakeOn' name='brakeDetection' value='1' " + 
+              String((brakeDetectionEnabled ? "checked" : "")) + ">"
+              "<label for='brakeOn'>Enabled</label><br>"
+              "<input type='radio' id='brakeOff' name='brakeDetection' value='0' " + 
+              String((!brakeDetectionEnabled ? "checked" : "")) + ">"
+              "<label for='brakeOff'>Disabled</label><br><br>"
               "<label for='speed'>Animation Speed (ms): " + String(animationSpeed) + "</label><br>"
               "<input type='range' id='speed' name='speed' min='10' max='60' value='" + String(animationSpeed) + "' oninput='this.nextElementSibling.value = this.value'>"
               "<output>" + String(animationSpeed) + "</output>"
@@ -354,21 +377,22 @@ void startServer(){
     request->send(200, "text/html", html);
   });
 
-  // Web server route to save the selected option and speed
+  // Web server route to save the selected option, speed, and brake detection state
   server.on("/save", HTTP_GET, [head](AsyncWebServerRequest *request) {
-    if (request->hasParam("option") && request->hasParam("speed")) {
-      selectedOption = request->getParam("option")->value();
-      animationSpeed = request->getParam("speed")->value().toInt(); // Get the speed from the slider
-      saveOption(selectedOption, animationSpeed); 
-      request->send(200, "text/html", 
-      "<!DOCTYPE html>"
-      "<html lang='en'>"
-      + head +
-      "Option and speed saved! <a href='/'>Go back</a>"
-      "</html>");
-      lastActivityTime = millis();
+    if (request->hasParam("option") && request->hasParam("speed") && request->hasParam("brakeDetection")) {
+        selectedOption = static_cast<AnimationOption>(request->getParam("option")->value().toInt()); // Get the option as an enum
+        animationSpeed = request->getParam("speed")->value().toInt(); // Get the speed from the slider
+        brakeDetectionEnabled = request->getParam("brakeDetection")->value() == "1"; // Get the brake detection state
+        saveOption(selectedOption, animationSpeed, brakeDetectionEnabled); 
+        request->send(200, "text/html", 
+        "<!DOCTYPE html>"
+        "<html lang='en'>"
+        + head +
+        "Option, speed, and brake detection saved! <a href='/'>Go back</a>"
+        "</html>");
+        lastActivityTime = millis();
     } else {
-      request->send(400, "text/plain", "Option or speed not found!");
+        request->send(400, "text/plain", "Option, speed, or brake detection not found!");
     }
   });
 
