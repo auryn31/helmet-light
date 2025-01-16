@@ -39,6 +39,12 @@ const int DEFAULT_SPEED = 20; // Default speed for the animation
 int animationSpeed = DEFAULT_SPEED; // Variable to store the animation speed
 bool brakeDetectionEnabled = true; // Default to enabled
 
+// constants 
+const String BREAK_DETECTION_KEY = "breakDetection";
+const String ANIMATION_SPEED_KEY = "animationSpeed";
+const String SELECTED_OPTION_KEY = "selectedOption";
+
+
 
 void check_if_breaking();
 void kittAnimation();
@@ -53,6 +59,10 @@ void setup()
 {
   Serial.begin(9600);
   Serial.println("Setup started");
+
+  // Initialize preferences
+  preferences.begin("my-app", false);
+  preferences.end();
 
   ws2812b.begin();
   Serial.println("WS2812B initialized");
@@ -96,14 +106,21 @@ void loop()
   // Clear the strip at the beginning of each loop
   ws2812b.clear();
   ws2812b.show(); // Ensure to show the cleared state
-
-  if (selectedOption == KITT_CAR) {
-    kittAnimation(); 
-  } else if (selectedOption == AUDI_CAR) {
-    carAnimation();
-  } else if (selectedOption == RACE) {
-    rainbowAnimation(); 
+  switch (selectedOption) {
+    case KITT_CAR:
+      kittAnimation();
+      break;
+    case AUDI_CAR:
+      carAnimation();
+      break;
+    case RACE:
+      rainbowAnimation();
+      break;
+    default:
+      Serial.println("Invalid option selected");
+      break;
   }
+
   if (isServerActive && millis() - lastActivityTime > timeoutDuration) {
     stopServer();
   }
@@ -253,21 +270,38 @@ void check_if_breaking()
 // Function to save the selected option, speed, and brake detection state in NVS
 void saveOption(AnimationOption option, int speed, bool brakeDetection) {
     preferences.begin("my-app", false); // Open NVS
-    preferences.putInt("selectedOption", option); // Save the option as an integer
-    preferences.putInt("animationSpeed", speed); // Save the speed
-    preferences.putBool("brakeDetectionEnabled", brakeDetection); // Save the brake detection state
+    
+    // Save values and verify they were saved correctly
+    preferences.putInt(SELECTED_OPTION_KEY.c_str(), option);
+    preferences.putInt(ANIMATION_SPEED_KEY.c_str(), speed);
+    preferences.putBool(BREAK_DETECTION_KEY.c_str(), brakeDetection);
+    
+    // Read back values to verify
+    int savedOption = preferences.getInt(SELECTED_OPTION_KEY.c_str(), -1);
+    int savedSpeed = preferences.getInt(ANIMATION_SPEED_KEY.c_str(), -1);
+    bool savedBrake = preferences.getBool(BREAK_DETECTION_KEY.c_str(), !brakeDetection);
+    
     preferences.end(); // Close NVS
-    Serial.println("Option, speed, and brake detection saved to NVS: " + String(option) + ", Speed: " + String(speed) + ", Brake Detection: " + String(brakeDetection));
+    
+    Serial.println("Saving to NVS:");
+    Serial.println("Option - Attempted: " + String(option) + ", Saved: " + String(savedOption));
+    Serial.println("Speed - Attempted: " + String(speed) + ", Saved: " + String(savedSpeed));
+    Serial.println("Brake Detection - Attempted: " + String(brakeDetection) + ", Saved: " + String(savedBrake));
 }
 
 // Function to load the selected option, speed, and brake detection state from NVS
 void loadOption() {
     preferences.begin("my-app", true); // Open NVS in read-only mode
-    selectedOption = static_cast<AnimationOption>(preferences.getInt("selectedOption", KITT_CAR)); // Load option, default to KITT_CAR
-    animationSpeed = preferences.getInt("animationSpeed", DEFAULT_SPEED); // Load speed, default to DEFAULT_SPEED
-    brakeDetectionEnabled = preferences.getBool("brakeDetectionEnabled", true); // Load brake detection state, default to true
+    // Load option, default to KITT_CAR if not found
+    selectedOption = static_cast<AnimationOption>(preferences.getInt(SELECTED_OPTION_KEY.c_str(), KITT_CAR));
+    // Load speed, default to DEFAULT_SPEED if not found
+    animationSpeed = preferences.getInt(ANIMATION_SPEED_KEY.c_str(), DEFAULT_SPEED);
+    // Load brake detection state with matching key name, default to false for debugging
+    brakeDetectionEnabled = preferences.getBool(BREAK_DETECTION_KEY.c_str(), false);
     preferences.end(); // Close NVS
-    Serial.println("Loaded option from NVS: " + String(selectedOption) + ", Speed: " + String(animationSpeed) + ", Brake Detection: " + String(brakeDetectionEnabled));
+    Serial.println("Loaded from NVS - Option: " + String(selectedOption) + 
+                  ", Speed: " + String(animationSpeed) + 
+                  ", Brake Detection: " + String(brakeDetectionEnabled));
 }
 
 void startServer(){
